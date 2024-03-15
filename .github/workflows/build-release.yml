@@ -63,9 +63,9 @@ jobs:
         cp src/accountserver dist/accountserver-`uname -m`-${{ steps.vars.outputs.release_name }}
         tar Jcf dist/accountserver-`uname -m`-${{ steps.vars.outputs.release_name }}.tar.xz -C src accountserver
 
-        for arch in aarch64; do
+        for arch in arm64; do
           git clean -fdx src
-          nimble c --cc:aarch64-linux-gnu-gcc -d:ssl -d:version=$(git describe --always) src/accountserver
+          nimble c --cpu:$arch -d:ssl -d:version=$(git describe --always) src/accountserver
           cp src/accountserver dist/accountserver-$arch-${{ steps.vars.outputs.release_name }}
           tar Jcf dist/accountserver-$arch-${{ steps.vars.outputs.release_name }}.tar.xz -C src accountserver
         done
