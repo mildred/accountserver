@@ -66,7 +66,7 @@ var
   arg_verbose: bool = false
   arg_insecure_logs: bool = false
   arg_allow_replicate: string = ""
-  arg_replicate_to: string: ""
+  arg_replicate_to: string = ""
   arg_jwt_secret: string = ""
 
 for kind, key, val in opts.getopt():
@@ -76,22 +76,13 @@ for kind, key, val in opts.getopt():
     quit(1)
   of cmdLongOption, cmdShortOption:
     case key
-    of "listen":
-      let arg_fd      = parse_sd_socket_activation(val)
-      (address, port) = parse_addr_and_port(val, 8080)
-
-      if arg_fd != -1:
-        echo "Unsupported systemd socket activation of file descriptor inheritance"
-        echo "See: <https://github.com/ringabout/httpx/issues/12>"
-        quit(1)
-
     of "db", "d":         arg_db = val
     of "sockapi-port":    arg_sockapi_port = val
     of "sockapi-addr":    arg_sockapi_addr = val
     of "api-port", "p":   arg_api_port = val
     of "api-addr", "a":   arg_api_addr = val
-    of "admin-port", "p": arg_admin_port = val
-    of "admin-addr", "a": arg_admin_addr = val
+    of "admin-port", "P": arg_admin_port = val
+    of "admin-addr", "A": arg_admin_addr = val
     of "verbose", "v":    arg_verbose = true
     of "insecure-logs":   arg_insecure_logs = true
     of "allow-replicate": arg_allow_replicate = val
@@ -172,7 +163,7 @@ proc main =
   for admin_server in admin_servers:
     echo &"Listening admin on {admin_server.address} port {admin_server.port}"
 
-  proc get_param64(params: Table[TaintedString, seq[TaintedString]], key: string, def: string = ""): string =
+  proc get_param64(params: Table[string, seq[string]], key: string, def: string = ""): string =
     var val = params.get_params(key)
     if val.len > 0:
       return val[0]
@@ -183,8 +174,8 @@ proc main =
 
     return def
 
-  proc decode_data_raw(data: string): Table[TaintedString, seq[TaintedString]] {.gcsafe.} =
-    iterator decodeDataRaw(data: string): tuple[key, value: TaintedString] =
+  proc decode_data_raw(data: string): Table[string, seq[string]] {.gcsafe.} =
+    iterator decodeDataRaw(data: string): tuple[key, value: string] =
       proc handleHexChar(c: char, x: var int, f: var bool) {.inline.} =
         case c
         of '0'..'9': x = (x shl 4) or (ord(c) - ord('0'))
@@ -232,11 +223,11 @@ proc main =
         if i < data.len and data[i] == '=':
           inc(i) # skip '='
           i = parseData(data, i, value, '&')
-        yield (name.TaintedString, value.TaintedString)
+        yield (name.string, value.string)
         if i < data.len:
           inc(i)
 
-    result = initTable[TaintedString,seq[TaintedString]]()
+    result = initTable[string,seq[string]]()
     for key, value in decodeDataRaw(data):
       result.mget_or_put(key, @[]).add(value)
 
@@ -402,5 +393,5 @@ proc main =
 
   runForever()
 
-main
+main()
 

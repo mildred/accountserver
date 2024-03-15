@@ -20,7 +20,7 @@ proc newSid*(): string =
   let f = open("/dev/random")
   defer: f.close()
   var buffer = newString(16)
-  discard f.readChars(buffer, 0, 16)
+  discard f.readChars(buffer.toOpenArray(0, 15))
   result = buffer.toHex
 
 func newSessionList*[T](timeout: Duration, close: proc(session: Session[T]) {.closure gcsafe.}): SessionList[T] =
