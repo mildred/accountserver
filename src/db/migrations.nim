@@ -1,7 +1,6 @@
 import strutils
 import strformat
-import db_sqlite
-import tables
+import db_connector/db_sqlite
 
 proc migrate*(db: DbConn): bool =
   var user_version = parseInt(db.get_value(sql"PRAGMA user_version;"))

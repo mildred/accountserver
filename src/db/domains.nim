@@ -1,4 +1,4 @@
-import db_sqlite
+import db_connector/db_sqlite
 import strutils
 import npeg
 import tables

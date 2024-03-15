@@ -1,13 +1,13 @@
 import options
 import strutils, strformat
 import asyncdispatch, net
-import docopt
 import asynchttpserver
 import zfblast/server
 import tables
 import nativesockets
 import json
 import base64
+import parseopt
 import ./utils/parse_port
 import ./utils/lineproto
 import ./db/dbcommon
@@ -51,18 +51,67 @@ Version: {version}
 
 const CRLF = "\c\L"
 
-let
-  args = docopt(doc)
-  arg_db = $args["--db"]
+const shortNoVal = {'v'}
+const longNoVal = @["help", "version", "verbose", "insecure-logs"]
+var opts = initOptParser(@[], shortNoVal = shortNoVal, longNoVal = longNoVal, allowWhitespaceAfterColon = false)
 
-if args["--version"]:
-  echo version
-  when defined(version):
-    quit(0)
-  else:
+var
+  arg_db: string
+  arg_sockapi_port: string = "7999"
+  arg_sockapi_addr = "127.0.0.1"
+  arg_api_port: string = "8000"
+  arg_api_addr: string = "127.0.0.1"
+  arg_admin_port: string = "8000"
+  arg_admin_addr: string = "127.0.0.1"
+  arg_verbose: bool = false
+  arg_insecure_logs: bool = false
+  arg_allow_replicate: string = ""
+  arg_replicate_to: string: ""
+  arg_jwt_secret: string = ""
+
+for kind, key, val in opts.getopt():
+  case kind
+  of cmdArgument:
+    echo "Unknown argument " & key
     quit(1)
+  of cmdLongOption, cmdShortOption:
+    case key
+    of "listen":
+      let arg_fd      = parse_sd_socket_activation(val)
+      (address, port) = parse_addr_and_port(val, 8080)
 
-proc main(args: Table[string, Value]) =
+      if arg_fd != -1:
+        echo "Unsupported systemd socket activation of file descriptor inheritance"
+        echo "See: <https://github.com/ringabout/httpx/issues/12>"
+        quit(1)
+
+    of "db", "d":         arg_db = val
+    of "sockapi-port":    arg_sockapi_port = val
+    of "sockapi-addr":    arg_sockapi_addr = val
+    of "api-port", "p":   arg_api_port = val
+    of "api-addr", "a":   arg_api_addr = val
+    of "admin-port", "p": arg_admin_port = val
+    of "admin-addr", "a": arg_admin_addr = val
+    of "verbose", "v":    arg_verbose = true
+    of "insecure-logs":   arg_insecure_logs = true
+    of "allow-replicate": arg_allow_replicate = val
+    of "replicate-to":    arg_replicate_to = val
+    of "jwt-secret":      arg_jwt_secret = val
+    of "help", "h":
+      echo doc
+      quit()
+    of "version":
+      echo version
+      when defined(version):
+        quit(0)
+      else:
+        quit(1)
+    else:
+      echo "Unknown argument: " & key & " " & val
+      quit(1)
+  of cmdEnd: assert(false) # cannot happen
+
+proc main =
   echo &"Starting up accountserver version {version}..."
   echo &"Opening database {arg_db}"
   var db: DbConn = connect(arg_db)
@@ -74,30 +123,30 @@ proc main(args: Table[string, Value]) =
 
   let
     sessions = newSessionList(defaultSessionTimeout)
-    arg_log = args["--verbose"]
-    arg_ilog = args["--insecure-logs"]
+    arg_log = arg_verbose
+    arg_ilog = arg_insecure_logs
     common = Common(
       sessions: sessions,
       db: db,
-      replicate_token: $args["--allow-replicate"],
-      replicate_to: if args["--replicate-to"]: split($args["--replicate-to"], ' ') else: @[],
-      jwt_secret: $args["--jwt-secret"])
-    sockapi_port = parse_port($args["--sockapi-port"], 7999)
-    sockapi_addr = $args["--sockapi-addr"]
+      replicate_token: arg_allow_replicate,
+      replicate_to: if arg_replicate_to != "": split(arg_replicate_to, ' ') else: @[],
+      jwt_secret: arg_jwt_secret)
+    sockapi_port = parse_port(arg_sockapi_port, 7999)
+    sockapi_addr = arg_sockapi_addr
 
   var
     admin_servers :seq[ZFBlast] = @[]
     api_servers :seq[AsyncHttpServer] = @[]
 
-  for addr in ($args["--admin-addr"]).split(","):
+  for addr in (arg_admin_addr).split(","):
     admin_servers.add(newZFBlast(
       trace = arg_log,
-      port = parse_port($args["--admin-port"], def = 8080),
+      port = parse_port(arg_admin_port, def = 8080),
       address = addr))
 
-  for addr in ($args["--api-addr"]).split(","):
+  for addr in (arg_api_addr).split(","):
     let server = newAsyncHttpServer()
-    let port = parse_port($args["--api-port"], def = 8000)
+    let port = parse_port(arg_api_port, def = 8000)
     let ai_list = getAddrInfo(addr, port, AF_UNSPEC)
     defer: freeAddrInfo(ai_list)
 
@@ -353,5 +402,5 @@ proc main(args: Table[string, Value]) =
 
   runForever()
 
-main(args)
+main
 

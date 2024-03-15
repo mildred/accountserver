@@ -12,7 +12,7 @@ proc close(session: sessions.Session[SessionData]) {.gcsafe.} =
   discard
 
 func newSessionList*(timeout: Duration): SessionList {.gcsafe.} =
-  sessions.newSessionList(timeout, close)
+  sessions.newSessionList[SessionData](timeout, close)
 
 export sessions.defaultSessionTimeout
 export sessions.deleteSession

@@ -34,7 +34,7 @@ jobs:
       uses: jiro4989/setup-nim-action@v1.1.4
       with:
         # The Nim version to download (if necessary) and use. Example: 1.0.2
-        nim-version: 1.6.18 # optional, default is stable
+        nim-version: stable # optional, default is stable
 
     - name: Install toolchains
       run: |

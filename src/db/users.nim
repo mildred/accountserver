@@ -1,7 +1,6 @@
 import strformat
-import db_sqlite
+import db_connector/db_sqlite
 import strutils
-import npeg
 import options
 import tables
 
@@ -79,16 +78,11 @@ proc `$`*(email: Email): string =
 proc to_sql_bool(b: bool): int =
   if b: 1 else: 0
 
-const email = peg("email", e: Email):
-  part  <- +( 1 - {'@'})
-  email <- >part * "@" * >part:
-    e.local_part = $1
-    e.domain = $2
-
 proc parse_email*(e: string): Option[Email] {.gcsafe.} =
   var res: Email
-  if email.match(e, res).ok:
-    result = some res
+  let parts = e.split("@")
+  if parts.len == 2:
+    result = some Email(local_part: parts[0], domain: parts[1])
   else:
     result = none Email
 

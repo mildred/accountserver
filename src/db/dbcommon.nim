@@ -1,8 +1,4 @@
-import strutils
-import strformat
-import db_sqlite
-import times
-import tables
+import db_connector/db_sqlite
 
 proc connect*(dbfile: string): DbConn =
   result = db_sqlite.open(dbfile, "", "", "")
