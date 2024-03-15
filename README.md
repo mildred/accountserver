@@ -12,6 +12,13 @@ The storage is a SQLite database.
 
 **This is a work in progress**
 
+Bugs
+----
+
+- **When starting an empty instance of accountmanager with replication
+    configured, it will replicate an empty state to all replication targets!!!
+    erasing the whole database**
+
 FIXME
 -----
 
